@@ -1,6 +1,6 @@
 # Game Messages
 
-This page describes the game messages structure, all kinds of game messages available, and their purpose.
+This page describes the structure and purpose of Teeworlds 0.6 game messages. Client IDs range from `0` to `15`.
 
 | Message ID    | Name                                |
 | ------------- | :---------------------------------: |
@@ -9,7 +9,7 @@ This page describes the game messages structure, all kinds of game messages avai
 | 2             | [NETMSGTYPE_SV_BROADCAST](#2---netmsgtype_sv_broadcast) |
 | 3             | [NETMSGTYPE_SV_CHAT](#3---netmsgtype_sv_chat) |
 | 4             | [NETMSGTYPE_SV_KILLMSG](#4---netmsgtype_sv_killmsg) |
-| 5             | [NETMSGTYPE_SV_SOUNDGLOBAL](#5---netmsgtype_sv_soundglobal) *(DDNet Only)* |
+| 5             | [NETMSGTYPE_SV_SOUNDGLOBAL](#5---netmsgtype_sv_soundglobal) |
 | 6             | [NETMSGTYPE_SV_TUNEPARAMS](#6---netmsgtype_sv_tuneparams) |
 | 7             | *Unused* |
 | 8             | [NETMSGTYPE_SV_READYTOENTER](#8---netmsgtype_sv_readytoenter) |
@@ -25,7 +25,7 @@ This page describes the game messages structure, all kinds of game messages avai
 | 18            | [NETMSGTYPE_CL_SETTEAM](#18---netmsgtype_cl_setteam) |
 | 19            | [NETMSGTYPE_CL_SETSPECTATORMODE](#19---netmsgtype_cl_setspectatormode) |
 | 20            | [NETMSGTYPE_CL_STARTINFO](#20---netmsgtype_cl_startinfo) |
-| 21            | [NETMSGTYPE_CL_CHANGEINFO](#21---netmsgtype_cl_changeinfo) *(DDNet Only)* |
+| 21            | [NETMSGTYPE_CL_CHANGEINFO](#21---netmsgtype_cl_changeinfo) |
 | 22            | [NETMSGTYPE_CL_KILL](#22---netmsgtype_cl_kill) |
 | 23            | [NETMSGTYPE_CL_EMOTICON](#23---netmsgtype_cl_emoticon) |
 | 24            | [NETMSGTYPE_CL_VOTE](#24---netmsgtype_cl_vote) |
@@ -66,7 +66,7 @@ Structure:
 
 ## 3 - NETMSGTYPE_SV_CHAT
 
-This message sends a chat line to the client. It supports all-chat, team chat, and whisper chat.
+This message sends a public or team chat line to the client.
 
 - **Vital** : ✅
 - **Instant Sending** : ❌
@@ -76,9 +76,8 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Mode          | **Integer** | Chat mode: `0` = no chat, `1` = all, `2` = team, `3` = whisper. |
-| Client ID     | **Integer** | The client ID of the player who sent the chat message. `-1` is used for server/system chat. |
-| Target ID     | **Integer** | The whisper target client ID. `-1` when the message is not a whisper. |
+| Team          | **Integer** | `0` for public chat; `1` for team chat. |
+| Client ID     | **Integer** | The sender's client ID (`0` to `15`), or `-1` for server messages. |
 | Message       | **String** | The chat text. |
 
 ## 4 - NETMSGTYPE_SV_KILLMSG
@@ -93,9 +92,9 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Killer        | **Integer** | Client ID of the killer (`0` to `63`), or a special value when the kill has no normal source: `-2` = self-kill by kill command, `-1` = world/environment kill. |
-| Victim        | **Integer** | Client ID of the player that died (`0` to `63`). |
-| Weapon        | **Integer** | Weapon identifier (`0` to `5`) for the kill, or a special value: `-3` = self-kill by kill command, `-2` = world/environment kill, `-1` = team-locked weapon. |
+| Killer        | **Integer** | Client ID of the killer (`0` to `15`). For self-kills and world deaths, this is the victim's client ID. |
+| Victim        | **Integer** | Client ID of the player that died (`0` to `15`). |
+| Weapon        | **Integer** | Weapon ID (`0` to `5`), or `-3` for game/team changes, `-2` for self-kills, and `-1` for world deaths. |
 | Mode Special  | **Integer** | Extra mode-specific value used by the client to render the kill message. |
 
 ## 5 - NETMSGTYPE_SV_SOUNDGLOBAL
@@ -114,7 +113,7 @@ Structure:
 
 ## 6 - NETMSGTYPE_SV_TUNEPARAMS
 
-This message sends tuning parameters to a client so the client can match the server physics settings.
+This message sends tuning parameters so the client can match the server physics settings. It contains 33 integers in the order below. Each value is scaled by 100; the descriptions refer to the decoded values.
 
 - **Vital** : ✅
 - **Instant Sending** : ❌
@@ -143,22 +142,29 @@ Structure:
 | Velramp Curvature | **Integer** | Curvature of the velocity ramp. |
 | Gun Curvature | **Integer** | Projectile curvature for the gun. |
 | Gun Speed | **Integer** | Projectile speed for the gun. |
-| Gun Lifetime | **Integer** | Lifetime, in ticks, for gun projectiles. |
+| Gun Lifetime | **Integer** | Lifetime in seconds for gun projectiles. |
 | Shotgun Curvature | **Integer** | Projectile curvature for shotgun pellets. |
 | Shotgun Speed | **Integer** | Projectile speed for shotgun pellets. |
 | Shotgun Speeddiff | **Integer** | Speed variation factor for shotgun spread. |
-| Shotgun Lifetime | **Integer** | Lifetime, in ticks, for shotgun projectiles. |
+| Shotgun Lifetime | **Integer** | Lifetime in seconds for shotgun projectiles. |
 | Grenade Curvature | **Integer** | Projectile curvature for grenades. |
 | Grenade Speed | **Integer** | Projectile speed for grenades. |
-| Grenade Lifetime | **Integer** | Lifetime, in ticks, for grenades. |
+| Grenade Lifetime | **Integer** | Lifetime in seconds for grenades. |
 | Laser Reach | **Integer** | Maximum laser reach. |
-| Laser Bounce Delay | **Integer** | Delay between laser bounces. |
+| Laser Bounce Delay | **Integer** | Delay between laser bounces in milliseconds. |
 | Laser Bounce Num | **Integer** | Number of laser bounces. |
-| Laser Bounce Cost | **Integer** | Ammunition cost for each laser bounce. |
+| Laser Bounce Cost | **Integer** | Extra laser energy consumed per bounce, measured in world units of travel distance. |
 | Laser Damage | **Integer** | Laser damage value. |
 | Player Collision | **Integer** | Enables or disables player collision. |
 | Player Hooking | **Integer** | Enables or disables hooking players. |
 :::
+
+```c
+packed_value = truncate(value * 100)
+value = packed_value / 100.0
+```
+
+For example, a Gun Lifetime value of `200` decodes to `2` seconds, or 100 ticks at 50 ticks per second. Enabled Player Collision and Player Hooking values are transmitted as `100`; disabled values are `0`.
 
 ## 8 - NETMSGTYPE_SV_READYTOENTER
 
@@ -184,7 +190,7 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Weapon        | **Integer** | Weapon ID that was picked up: `0` = hammer, `1` = gun, `2` = shotgun, `3` = grenade, `4` = laser. |
+| Weapon        | **Integer** | Weapon ID: `0` = hammer, `1` = gun, `2` = shotgun, `3` = grenade, `4` = rifle/laser, `5` = ninja. |
 
 ## 10 - NETMSGTYPE_SV_EMOTICON
 
@@ -225,10 +231,24 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Num. Options  | **Integer** | Number of vote option descriptions included in the message. |
-| Description 0 | **String** | First vote option description. |
-| ...           | ...    | ... |
-| Description N | **String** | Last vote option description. |
+| Num. Options  | **Integer** | Number of active descriptions, from `1` to `15`. |
+| Description 0 | **String** | Description slot 0. |
+| Description 1 | **String** | Description slot 1. |
+| Description 2 | **String** | Description slot 2. |
+| Description 3 | **String** | Description slot 3. |
+| Description 4 | **String** | Description slot 4. |
+| Description 5 | **String** | Description slot 5. |
+| Description 6 | **String** | Description slot 6. |
+| Description 7 | **String** | Description slot 7. |
+| Description 8 | **String** | Description slot 8. |
+| Description 9 | **String** | Description slot 9. |
+| Description 10 | **String** | Description slot 10. |
+| Description 11 | **String** | Description slot 11. |
+| Description 12 | **String** | Description slot 12. |
+| Description 13 | **String** | Description slot 13. |
+| Description 14 | **String** | Description slot 14. |
+
+All 15 strings are sent. The first Num. Options slots contain descriptions; unused slots are empty strings.
 
 ## 13 - NETMSGTYPE_SV_VOTEOPTIONADD
 
@@ -270,8 +290,6 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Client ID     | **Integer** | Client ID that created the vote, or `-1` when no creator should be shown. |
-| Type          | **Integer** | Vote type: `0` = unknown, `1` = start option, `2` = start kick, `3` = start spectator, `4` = abort, `5` = pass, `6` = fail. |
 | Timeout       | **Integer** | Remaining vote timeout in seconds, or `0` when the vote is closed. |
 | Description   | **String** | Vote description shown to the client. Empty when the vote is closed. |
 | Reason        | **String** | Vote reason shown to the client. Empty when the vote is closed. |
@@ -305,8 +323,7 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Mode          | **Integer** | Chat mode: `0` = no chat, `1` = all, `2` = team, `3` = whisper. |
-| Target        | **Integer** | Whisper target client ID, or `-1` when the message is not a whisper. |
+| Team          | **Boolean** | `0` for public chat; `1` for team chat. |
 | Message       | **String** | Chat text entered by the client. |
 
 ## 18 - NETMSGTYPE_CL_SETTEAM
@@ -339,10 +356,10 @@ Structure:
 
 ## 20 - NETMSGTYPE_CL_STARTINFO
 
-This message sends the player's initial player information to the server.
+This message sends the player's initial information to the server.
 
 - **Vital** : ✅
-- **Instant Sending** : ❌
+- **Instant Sending** : ✅
 - **Sending Path** : Client -> Server
 
 Structure:
@@ -352,24 +369,10 @@ Structure:
 | Name          | **String** | Player name. |
 | Clan          | **String** | Player clan. |
 | Country       | **Integer** | Country code for the player. |
-| Skin Part 0   | **String** | Body skin part name. |
-| Skin Part 1   | **String** | Marking skin part name. |
-| Skin Part 2   | **String** | Decoration skin part name. |
-| Skin Part 3   | **String** | Hands skin part name. |
-| Skin Part 4   | **String** | Feet skin part name. |
-| Skin Part 5   | **String** | Eyes skin part name. |
-| Use Custom Color 0 | **Integer** | Whether the body skin part uses a custom color. |
-| Use Custom Color 1 | **Integer** | Whether the marking skin part uses a custom color. |
-| Use Custom Color 2 | **Integer** | Whether the decoration skin part uses a custom color. |
-| Use Custom Color 3 | **Integer** | Whether the hands skin part uses a custom color. |
-| Use Custom Color 4 | **Integer** | Whether the feet skin part uses a custom color. |
-| Use Custom Color 5 | **Integer** | Whether the eyes skin part uses a custom color. |
-| Skin Part Color 0 | **Integer** | Body skin part color. |
-| Skin Part Color 1 | **Integer** | Marking skin part color. |
-| Skin Part Color 2 | **Integer** | Decoration skin part color. |
-| Skin Part Color 3 | **Integer** | Hands skin part color. |
-| Skin Part Color 4 | **Integer** | Feet skin part color. |
-| Skin Part Color 5 | **Integer** | Eyes skin part color. |
+| Skin          | **String** | Skin name. |
+| Use Custom Color | **Boolean** | Whether the player uses custom skin colors. |
+| Color Body    | **Integer** | Body color value. |
+| Color Feet    | **Integer** | Feet color value. |
 
 ## 21 - NETMSGTYPE_CL_CHANGEINFO
 
@@ -387,7 +390,7 @@ Structure:
 | Clan          | **String** | Player clan. |
 | Country       | **Integer** | Country code for the player. |
 | Skin          | **String** | Skin name. |
-| Use Custom Color | **Integer** | Whether the player uses custom skin colors. |
+| Use Custom Color | **Boolean** | Whether the player uses custom skin colors. |
 | Color Body    | **Integer** | Body color value. |
 | Color Feet    | **Integer** | Feet color value. |
 
@@ -433,7 +436,7 @@ Structure:
 
 ## 25 - NETMSGTYPE_CL_CALLVOTE
 
-This message requests the server to start or force a vote.
+This message requests the server to start a vote.
 
 - **Vital** : ✅
 - **Instant Sending** : ❌
@@ -443,10 +446,11 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Type          | **String** | Vote type requested by the client. |
-| Value         | **String** | Value for the vote, such as a player name or team. |
+| Type          | **String** | Vote type: `option`, `kick`, or `spectate`. |
+| Value         | **String** | Option description, or a decimal client ID string for kick and spectate votes. |
 | Reason        | **String** | Reason shown for the vote. |
-| Force         | **Integer** | Whether the vote should be forced by an authenticated client. |
+
+Authenticated clients perform forced actions through rcon commands.
 
 ---
 

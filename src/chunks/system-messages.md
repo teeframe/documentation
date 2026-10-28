@@ -1,6 +1,6 @@
 # System Messages
 
-This page describes the system messages structure, all kind of system messages available and its purpose.
+This page describes the structure and purpose of Teeworlds 0.6 system messages.
 
 | Message ID    | Name                                |
 | ------------- | :---------------------------------: |
@@ -14,7 +14,7 @@ This page describes the system messages structure, all kind of system messages a
 | 7             | [NETMSG_SNAPSINGLE](#7-netmsg-snapsingle) |
 | 8             | *Unused* |
 | 9             | [NETMSG_INPUTTIMING](#9-netmsg-inputtiming) |
-| 10            | [NETMSG_RCON_AUTH_ON](#10-netmsg-rcon-auth-on) |
+| 10            | [NETMSG_RCON_AUTH_STATUS](#10-netmsg-rcon-auth-status) |
 | 11            | [NETMSG_RCON_LINE](#11-netmsg-rcon-line) |
 | 12            | *Unused* |
 | 13            | *Unused* |
@@ -44,9 +44,8 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Version       | **String** | The client version string. |
+| Version       | **String** | The network version string used to check protocol compatibility. |
 | Password      | **String** | The server password, if needed. May be empty. |
-| Client Version | **Integer** | A numeric client version identifier. |
 
 ## 2 - NETMSG_MAP_CHANGE
 
@@ -61,11 +60,9 @@ Structure:
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
 | Map Name      | **String** | The name of the map. |
-| Map CRC       | **Integer** | The CRC checksum of the map. |
-| Map Size      | **Integer** | Total map size in bytes. |
-| Chunks Per Request | **Integer** | Number of map chunks the server sends per `NETMSG_REQUEST_MAP_DATA` request. |
-| Chunk Size    | **Integer** | Size of each map chunk in bytes. |
-| Map SHA256    | **Binary (32 bytes)** | SHA256 digest of the map. |
+| Map CRC       | **Integer** | CRC32 of the complete original `.map` file, represented as a signed 32-bit integer. |
+| Map Size      | **Integer** | Total original file size in bytes. |
+
 
 ## 3 - NETMSG_MAP_DATA
 
@@ -79,7 +76,15 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Data          | **Binary** | Raw map chunk data. |
+| Last          | **Boolean** | `1` if this is the final map chunk; otherwise `0`. Packed as an integer. |
+| Map CRC       | **Integer** | The same map CRC announced in `NETMSG_MAP_CHANGE`. |
+| Chunk         | **Integer** | Zero-based index of this map chunk. |
+| Chunk Size    | **Integer** | Number of raw bytes in Data. |
+| Data          | **Binary** | Exactly Chunk Size bytes from the original `.map` file. |
+
+Each request receives one map chunk containing up to **896 bytes**. Its file offset is `Chunk * 896`. Last is set to `1` when the chunk reaches the end of the file, including when the final chunk contains a full 896 bytes.
+
+The first four fields use variable-length integer encoding. Data contains the bytes of the requested file slice. Packet-level compression is decoded before reassembling the file; zlib-compressed blocks inside the map remain part of the downloaded file.
 
 ## 4 - NETMSG_CON_READY
 
@@ -95,7 +100,7 @@ Structure:
 
 ## 5 - NETMSG_SNAP
 
-This message sends a slice of a snap with part of the items.
+This message sends one part of a snapshot delta split across multiple chunks.
 
 - **Vital** : ❌
 - **Instant Sending** : ✅
@@ -107,7 +112,7 @@ Snap is a complex type of chunk. You can find more information about it on [Snap
 
 ## 6 - NETMSG_SNAPEMPTY
 
-This message sends an empty snap with no items.
+This message reports that the snapshot has no changes from its baseline. The client keeps the baseline items and advances to the current tick.
 
 - **Vital** : ❌
 - **Instant Sending** : ✅
@@ -119,7 +124,7 @@ Snap is a complex type of chunk. You can find more information about it on [Snap
 
 ## 7 - NETMSG_SNAPSINGLE
 
-This message sends a full snap with all items in a single packet.
+This message sends a snapshot delta in a single chunk. Without a baseline, the delta contains the full item state.
 
 - **Vital** : ❌
 - **Instant Sending** : ✅
@@ -131,7 +136,7 @@ Snap is a complex type of chunk. You can find more information about it on [Snap
 
 ## 9 - NETMSG_INPUTTIMING
 
-This message is a response from the server to the client "INPUT" chunk, reporting how early or late the input was handled.
+Sent by the server when it receives input for a newer prediction tick. It reports the time left until that tick, in milliseconds.
 
 - **Vital** : ❌
 - **Instant Sending** : ❌
@@ -148,9 +153,9 @@ Structure:
 Check the [Input & Input Timing Chunks](./../packets/chunks-concept.md#input-input-timing-chunks) section for more information about this chunk.
 :::
 
-## 10 - NETMSG_RCON_AUTH_ON
+## 10 - NETMSG_RCON_AUTH_STATUS
 
-Sent by the server to indicate that the client has been authenticated for rcon.
+Sent by the server to update the client's rcon authentication and command-list state.
 
 - **Vital** : ✅
 - **Instant Sending** : ❌
@@ -158,7 +163,10 @@ Sent by the server to indicate that the client has been authenticated for rcon.
 
 Structure:
 
-***Empty payload***
+| Field         | Type   | Description |
+| ------------- | ------ | ----------- |
+| Authenticated | **Boolean** | `1` if authenticated; `0` otherwise. |
+| Use Command List | **Boolean** | `1` to use the server-provided rcon command list; `0` to clear and disable it. |
 
 ## 11 - NETMSG_RCON_LINE
 
@@ -190,7 +198,7 @@ Structure:
 
 Sent by the client to tell the server to start sending snapshots.
 
-- **Vital** : ❌
+- **Vital** : ✅
 - **Instant Sending** : ✅
 - **Sending Path** : Client -> Server
 
@@ -212,10 +220,10 @@ Structure:
 | ------------- | ------ | ----------- |
 | Ack Game Tick      | **Integer** | The last acknowledged server game tick. |
 | Prediction Tick    | **Integer** | The game tick the client is predicting with this input. |
-| Input Size         | **Integer** | Total size of the raw input data in bytes. |
+| Input Size         | **Integer** | Input size before integer packing: `40` bytes for the 10 player-input integers. |
 | Input -> Direction | **Integer** | Direction the player is moving: `-1` = left, `0` = neutral, `1` = right. |
-| Input -> Target X  | **Integer** | X coordinate of the crosshair / target position. |
-| Input -> Target Y  | **Integer** | Y coordinate of the crosshair / target position. |
+| Input -> Target X  | **Integer** | Horizontal aim offset relative to the character. |
+| Input -> Target Y  | **Integer** | Vertical aim offset relative to the character. |
 | Input -> Jump      | **Integer** | Jump input state. |
 | Input -> Fire      | **Integer** | Fire input state. |
 | Input -> Hook      | **Integer** | Hook input state. |
@@ -223,7 +231,8 @@ Structure:
 | Input -> WantedWeapon | **Integer** | Direct weapon slot selection. `0` = no desired weapon, `1+weapon` = desired weapon. |
 | Input -> NextWeapon | **Integer** | Next weapon cycle input. |
 | Input -> PrevWeapon | **Integer** | Previous weapon cycle input. |
-| Ping Correction     | **Integer** | Client-reported ping correction for latency calculation. |
+
+Input Size counts the 32-bit input values before packing, so it can differ from the encoded payload length. Normal input is sent with immediate flushing; direct input can also be sent without flushing.
 
 :::info
 Check the [Input & Input Timing Chunks](./../packets/chunks-concept.md#input-input-timing-chunks) section for more information about this chunk.
@@ -245,7 +254,7 @@ Structure:
 
 ## 18 - NETMSG_RCON_AUTH
 
-Sent by the client to authenticate for rcon access, containing the password.
+Sent by the client to authenticate for rcon access and request the available command list.
 
 - **Vital** : ✅
 - **Instant Sending** : ❌
@@ -255,7 +264,9 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
+| Login Name    | **String** | Login name. The server reads this field but does not use it for authentication. |
 | Password      | **String** | The rcon password used to authenticate. |
+| Send Command List | **Boolean** | Whether the client requests the available rcon commands after authentication. |
 
 ## 19 - NETMSG_REQUEST_MAP_DATA
 
@@ -269,7 +280,9 @@ Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Chunk         | **Integer** | The map chunk index being requested. |
+| Chunk         | **Integer** | Zero-based map chunk index being requested, starting at `0`. |
+
+The client requests successive indices until `NETMSG_MAP_DATA` has Last set to `1`. Each index selects a file slice starting at `Chunk * 896`. Reassemble the raw slices in order and verify the complete file against the announced size and CRC.
 
 ## 22 - NETMSG_PING
 
