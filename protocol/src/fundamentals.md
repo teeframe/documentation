@@ -11,18 +11,18 @@ The available flags are:
 | Value    | Final Value | Name                      |
 | -------- | ----------- | :-----------------------: |
 | 1 << 0   | 1           | FLAG_TYPE_CONTROL         | 
-| 1 << 1   | 2           | *Unused¹* |
+| 1 << 1   | 2           | FLAG_TYPE_CONNECTION_LESS |
 | 1 << 2   | 4           | FLAG_RESEND               |
 | 1 << 3   | 8           | FLAG_COMPRESSION          |
 <!-- | 16       | FLAG_SECURITY_TOKEN       | -->
 
 :::info
-***1.*** The flag of final value "2" is to identify connection-less messages, but TeeFrame does not implement them and discards all connection-less packets.
+[Connectionless Packets](./packets/connectionless-packets.md) use a separate six-byte header. Once a packet is identified as connectionless, decode that header instead of the flags and ACK layout used by control messages and default packets.
 :::
 
 ## Sequence Number
 
-The protocol uses a sequence number on the packet header to ensure that packets are received in the correct order. **You will see this number as ACK (Acknowledged sequence number) on this documentation from now on.**
+Control messages and default packets use a sequence number on the packet header to ensure that vital chunks are received in the correct order. **You will see this number as ACK (Acknowledged sequence number) on this documentation from now on.**
 
 The ACK number defines how many [vital chunks](#default-packets) were successfully received. As a server, you will have an ACK number to track how many vital chunks you received from the client, and the client will have an ACK number to track how many vital chunks it received from you (the server).
 
@@ -41,11 +41,11 @@ The security token is a 4-byte value randomly generated. You can just generate 4
 
 ## Packet Types
 
-The protocol has two types of packets: control messages and default packets. Each of them has its purpose and its own header and structure.
+The protocol has three types of packets: control messages, connectionless packets, and default packets. Each of them has its purpose and its own header and structure.
 
-<!-- ### Connection-less Messages
+### Connectionless Packets
 
-These packets are used to send information to the server without establishing a connection. They are used for server discovery and server information. The connection can send a connection-less packet to check if a server is online, and the server can send a connection-less packet to answer with its information (name, map name, player list, etc.). -->
+These packets are used to request and send server information, such as the server name, version, map, and client list. They do not require an established connection, but are also used while already in-game to fill the client's Server tab. Their structure is described on the [Connectionless Packets](./packets/connectionless-packets.md) page.
 
 ### Control Messages
 

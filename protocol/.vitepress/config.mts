@@ -40,6 +40,7 @@ export default defineConfig({
         text: 'Packets',
         items: [
           { text: 'Control Messages', link: '/packets/control-messages' },
+          { text: 'Connectionless Packets', link: '/packets/connectionless-packets' },
           { text: 'Default Packets', link: '/packets/default-packets' },
           { text: 'Chunks Concept', link: '/packets/chunks-concept' },
           { text: 'Snaps Concept', link: '/packets/snaps-concept' },
