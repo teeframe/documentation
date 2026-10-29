@@ -1,0 +1,14 @@
+{
+  "name": "@teeframe/map-documentation",
+  "private": true,
+  "scripts": {
+    "dev": "npm run docs:dev",
+    "build": "npm run docs:build",
+    "docs:dev": "vitepress dev --port 5174",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview --port 4174"
+  },
+  "dependencies": {
+    "vitepress": "^1.6.4"
+  }
+}

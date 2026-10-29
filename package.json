@@ -1,12 +1,16 @@
 {
+  "name": "protocol-documentation",
+  "private": true,
+  "workspaces": [
+    "protocol",
+    "map"
+  ],
   "scripts": {
-    "dev": "npm run docs:dev",
-    "build": "npm run docs:build",
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
-  },
-  "dependencies": {
-    "vitepress": "^1.6.4"
+    "dev:protocol": "npm run docs:dev --workspace protocol",
+    "dev:map": "npm run docs:dev --workspace map",
+    "build:protocol": "npm run docs:build --workspace protocol",
+    "build:map": "npm run docs:build --workspace map",
+    "preview:protocol": "npm run docs:preview --workspace protocol",
+    "preview:map": "npm run docs:preview --workspace map"
   }
 }
