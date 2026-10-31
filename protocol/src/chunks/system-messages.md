@@ -184,7 +184,7 @@ Structure:
 
 ## 14 - NETMSG_READY
 
-Sent by the client after it has loaded the map and is ready.
+Sent by the client after it has loaded the map. The server responds with NETMSG_CON_READY to request the player's start information. **This message does not mean that player initialization is complete.**
 
 - **Vital** : ✅
 - **Instant Sending** : ✅
@@ -196,7 +196,7 @@ Structure:
 
 ## 15 - NETMSG_ENTERGAME
 
-Sent by the client to tell the server to start sending snapshots.
+Sent by the client after receiving NETMSGTYPE_SV_READYTOENTER, telling the server to start sending snapshots. The server must have processed the player's CL_STARTINFO before accepting this message. You can find the complete sequence on the [Sending Game Context](./../implementation/sending-game-context.md) page.
 
 - **Vital** : ✅
 - **Instant Sending** : ✅

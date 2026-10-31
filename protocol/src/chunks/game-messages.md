@@ -168,7 +168,7 @@ For example, a Gun Lifetime value of `200` decodes to `2` seconds, or 100 ticks 
 
 ## 8 - NETMSGTYPE_SV_READYTOENTER
 
-This message tells the client that it may enter the game.
+This message tells the client that its start information has been processed and it may enter the game. The client responds with [NETMSG_ENTERGAME](./system-messages.md#_15-netmsg-entergame), as described on the [Sending Game Context](./../implementation/sending-game-context.md) page.
 
 - **Vital** : ✅
 - **Instant Sending** : ✅
@@ -356,7 +356,7 @@ Structure:
 
 ## 20 - NETMSGTYPE_CL_STARTINFO
 
-This message sends the player's initial information to the server.
+This message sends the player's initial information to the server after NETMSG_CON_READY. The server processes it once per map handshake, then sends NETMSGTYPE_SV_READYTOENTER. You can find the complete sequence on the [Sending Game Context](./../implementation/sending-game-context.md) page.
 
 - **Vital** : ✅
 - **Instant Sending** : ✅

@@ -64,15 +64,15 @@ export default defineConfig({
         ]
       },
 
-      // {
-      //   text: 'Implementation',
-      //   items: [
-      //     { text: 'Initial Handshake', link: '/implementation/initial-handshake' },
-      //     { text: 'Map Download', link: '/implementation/map-download' },
-      //     { text: 'Sending Game Context', link: '/implementation/sending-game-context' },
-      //     { text: 'Disconnecting', link: '/implementation/disconnecting' },
-      //   ]
-      // },
+      {
+        text: 'Implementation',
+        items: [
+          { text: 'Initial Handshake', link: '/implementation/initial-handshake' },
+          // { text: 'Map Download', link: '/implementation/map-download' },
+          { text: 'Sending Game Context', link: '/implementation/sending-game-context' },
+          // { text: 'Disconnecting', link: '/implementation/disconnecting' },
+        ]
+      },
 
       { text: 'Naming Changes', link: '/others/naming-changes' },
     ],
