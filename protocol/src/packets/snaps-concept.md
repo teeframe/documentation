@@ -10,20 +10,32 @@ Snap items represent the state of something in the game world, such as tees, pro
 
 ## Delta Snap
 
-Delta snap is a crucial concept for sending snap chunks correctly; that's why it will be explained first. The first snap chunk will send all snap items, **and when there is a delta snap, the server will send only the difference between the last snap and the delta snap (current game state).**  The delta snap will be set (by the server) when the client sends the [Input Chunk](./../packets/chunks-concept.md#input-input-timing-chunks) with the Ack Game Tick of some already sent snap.
+Delta snap is a crucial concept for sending snap chunks correctly; that's why it will be explained first. The first snap sends all snap items. Once the client acknowledges a snapshot, the server can use it as the **baseline**, also called the delta snap.
+
+The baseline is selected when the client sends an [Input Chunk](./chunks-concept.md#input-input-timing-chunks) with that snapshot's tick as Ack Game Tick. **When the server still has that snapshot, it sends only the difference between the current game state and the baseline.**
 
 Every snap chunk contains at least a current tick and delta tick value:
 
-- **Current Tick** : the current tick of the server (returned by the client on input to set as delta snap).
-- **Delta Tick** : the current tick - (the Ack Game Tick value from the last received [Input Chunk](./../packets/chunks-concept.md#input-input-timing-chunks), to the client which snap the server is using as delta).
+- **Current Tick** : the game tick of the snapshot being sent. The client acknowledges this tick after successfully reconstructing the snapshot.
+- **Delta Tick** : Current Tick minus the tick of the baseline actually used to encode the payload. The client obtains the baseline tick with `Current Tick - Delta Tick`.
 
 :::info
-Delta tick will be current tick - (-1) if there is no delta snap confirmed by the client.
+Without an available baseline, the server uses an empty baseline: a snapshot with no items, used only for comparison. **All current snap items are sent as new items, so this produces a full snapshot.** The baseline tick is `-1`, so **Delta Tick is Current Tick + 1**, even if the client's Ack Game Tick has another value.
+:::
+
+*The original 0.6 server* keeps three seconds of snapshot history and removes older snapshots regardless of ACK progress. An acknowledged snapshot may therefore have expired, even while the client continues sending inputs. The retention window is a server policy, **not a limit imposed by the protocol.**
+
+:::info
+You can use a different retention period or limit the number of stored snapshots instead.
+:::
+
+:::warning
+The header and payload must use the same baseline. Do not signal base tick `-1` while encoding differences from a previous snapshot.
 :::
 
 ## Snap Types
 
-There are three snap chunks: ***Snap Empty***, ***Snap Single***, and ***Snap Slice***. Snap Empty contains only the current and delta tick and is used when there are no items to send. At the same time, the other snaps contain extra data. **The default snap is the Snap Single**.
+There are three snap chunks: ***Snap Empty***, ***Snap Single***, and ***Snap Slice***. Snap Empty contains only the current and delta tick and is used when there are no items to send. **This means there are no changes from the baseline.** Snap Single carries a delta payload in one chunk, while Snap Slice splits it across multiple chunks.
 
 These data are CRC, removed items count, updated items count, and the snap payload:
 
@@ -86,16 +98,20 @@ Snap Slice will be sent with the same current tick, delta tick, and CRC (but a d
 
 ## When to send Snaps
 
-One crucial thing to understand is when you should send snap chunks. For that, you, as a server, will need to use a Snap State value for every client. The possible Snap State values are ***INIT***, ***FULL***, and ***RECOVER***. **Every new client will start with the ***INIT*** state.**
+*The original 0.6 server* tracks a Snap State for every client: ***INIT***, ***FULL***, or ***RECOVER***. **Every new client starts in INIT.**
 
-After the first received [Input Chunk](./../packets/chunks-concept.md#input-input-timing-chunks), the Snap State will change to ***FULL***. If the client does not send an [Input Chunk](./../packets/chunks-concept.md#input-input-timing-chunks) for ***3 seconds***, the Snap State will change to ***RECOVER***. Below, you can find the snap chunk sending frequency for each Snap State:
+An [Input Chunk](./chunks-concept.md#input-input-timing-chunks) with a positive Ack Game Tick sets the state to ***FULL***. When building a snapshot, if that acknowledged baseline cannot be found in the retained history, a ***FULL*** client changes to ***RECOVER*** and receives a full snapshot using base tick `-1`.
+
+**Recovery depends on a missing baseline, not simply on receiving no input for three seconds.** It can also happen while inputs continue to arrive with an expired or unavailable ACK. A later ACK for a retained snapshot allows normal delta snapshots to resume.
+
+The reference server uses the following sending frequencies:
 
 - **INIT** : Snap chunk every 10 ticks.
 - **FULL** : Snap chunk every 1 tick (or every 2 ticks to save bandwidth).
 - **RECOVER** : Snap chunk every 50 ticks.
 
 :::info
-The Snap State system is a way to not flood the client with snap chunks when it is not necessary. However, its not a rule, and you can implement your own system. 
+The Snap State, sending frequency, and history retention system is a way to avoid flooding the client with snap chunks when it is not necessary. **It is not a protocol requirement, and you can implement your own system.**
 :::
 
 <!-- **Another important thing is to understand when you, as a server, should send certain snap items.** For that, on the [Snap Items](./../snap/snap-items.md) page, for each item there is a specification of when you should send it. -->

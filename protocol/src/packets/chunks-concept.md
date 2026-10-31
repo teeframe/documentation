@@ -46,26 +46,38 @@ The source will need to re-send all the chunks with a sequence number greater th
 
 ## Input & Input Timing Chunks
 
-[Input](./../chunks/system-messages.md#_16-netmsg-input) and [Input Timing](./../chunks/system-messages.md##_9-netmsg-inputtiming) chunks are one of the most important chunks in the game and therefore will be covered separately in this topic. 
+[Input](./../chunks/system-messages.md#_16-netmsg-input) and [Input Timing](./../chunks/system-messages.md#_9-netmsg-inputtiming) chunks carry player input and keep the client's prediction aligned with the server.
 
-The [Input](./../chunks/system-messages.md#_16-netmsg-input) chunk is sent by the client to the server and contains the tick value of the latest [snap chunk](./snaps-concept.md) received from the server (and, prediction tick, and player input's). **This value will be crucial used to calculate the [snap items difference](./snaps-concept.md#snap-payload).**
+The Input chunk contains the player's input, its prediction tick, and the tick of the latest snapshot successfully reconstructed by the client. **The acknowledged snapshot is used as the delta snap for [snapshot differences](./snaps-concept.md#snap-payload), if the server still has it.**
 
-The [Input Timing](./../chunks/system-messages.md##_9-netmsg-inputtiming) chunk is sent by the server to the client as an answer to the [Input](./../chunks/system-messages.md#_16-netmsg-input) chunk. It contains the intended tick value sent by the client and the time left to the intended tick. **This chunk is used to adjust the client's prediction margin.**
+The server sends Input Timing when the received prediction tick is newer than the previous input's tick. It returns the same intended tick sent by the client and reports the time left until that tick, in milliseconds. Negative values mean the input was late. **This chunk is used to adjust the client's prediction margin.**
 
-As a server, you must use a queue to save all the inputs received from the client, and apply them when the server reaches the prediction tick. **You will also need to discard every input that is older than the biggest prediction tick received from the client.**
+The server buffers inputs and applies them at their scheduled game tick. **Receiving an input for a later tick does not invalidate inputs already queued for earlier ticks.** 
+
+*The original 0.6 server* uses a 200-entry ring buffer, a fixed-size buffer that overwrites the oldest input when full, to store inputs. If the requested tick has already been processed, it schedules the input for the next tick instead. The 200-entry ring buffer is a server policy, **not an implementation imposed by the protocol.**
+
+:::info
+You can use a different buffer size or another way to store inputs.
+:::
+
+Keep the buffer bounded, including for dead players and spectators. Inputs whose scheduled tick has passed must not accumulate indefinitely or be replayed when a character respawns.
+
+:::warning
+Input Timing must refer to the **original tick sent by the client**, even when the server reschedules the input. An input for the next tick to be processed must not be delayed by an additional tick.
+:::
 
 Below, you can find the explanation of particular values of both chunks that may be difficult to understand or calculate.
 
 ### Input particular values
 
-- **Ack Game Tick** : the tick value from the last received snap chunk from the server.
+- **Ack Game Tick** : the tick of the latest snapshot successfully reconstructed by the client, or `-1` when no snapshot is acknowledged.
 - **Prediction Tick** : the tick of the server that the client is predicting.
 
 ### Input Timing particular values
 
 - **Intended Tick** : the prediction tick value sent by the client.
-- **Time Left** : the time left to the intended tick (in milliseconds).
+- **Time Left** : signed time remaining until the original intended tick, in milliseconds. Negative values mean the input arrived late.
 <br><br>
 :::info
-By decoding these chunks, you can calculate the latency used by the "player info" snap item.
+To measure latency, use Ack Game Tick to find the acknowledged snapshot's send time and subtract it from the current time. **Time Left is not the player's ping.**
 :::

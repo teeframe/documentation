@@ -103,34 +103,59 @@ Structure:
 | RoundCurrent  | **Integer** | Current round number (`1` based). |
 ## 9 - NETOBJTYPE_CHARACTER
 
-This item represents a character (tee) in the game world, including its core physics and state.
+This item represents a character (tee) in the game world, including its core physics and state. **The payload contains 22 integers: 15 core fields followed by 7 character fields**, in the order below.
+
 Structure:
 
 | Field         | Type   | Description |
 | ------------- | ------ | ----------- |
-| Core -> Tick     | **Integer** | The game tick at which the core data was recorded, for dead reckoning purposes. |
+| Core -> Tick     | **Integer** | Game tick of the core state used for dead reckoning. `0` disables dead reckoning, including while the world is paused. |
 | Core -> X        | **Integer** | Core X position in the world. |
 | Core -> Y        | **Integer** | Core Y position in the world. |
-| Core -> VelX     | **Integer** | Core horizontal velocity. |
-| Core -> VelY     | **Integer** | Core vertical velocity. |
-| Core -> Angle    | **Integer** | Core rotation angle, used for character rendering and aiming. |
+| Core -> VelX     | **Integer** | Horizontal velocity, scaled by 256. Divide by 256 to obtain world units per tick. |
+| Core -> VelY     | **Integer** | Vertical velocity, scaled by 256. Divide by 256 to obtain world units per tick. |
+| Core -> Angle    | **Integer** | Aim angle in radians, multiplied by 256. |
 | Core -> Direction| **Integer** | Core movement direction: `-1` = left, `0` = neutral, `1` = right. |
-| Core -> Jumped   | **Integer** | Core jump counter: `0` = grounded, `1` = ground jumped, `2` = air jumped, `3` = both used. |
+| Core -> Jumped   | **Integer** | Jump state bitmask: `1` = the current jump press has been used, `2` = the air jump has been used. See [Jump State & Effects](#jump-state-effects). |
 | Core -> HookedPlayer | **Integer** | Client ID of the player this tee is hooking, or `-1` if not hooking a player. |
-| Core -> HookState | **Integer** | Hook state: `-1` = idle, `0` = flying, `1` = attached to a non-hookable tile, `2`-`5` = attached to a hookable tile direction. |
-| Core -> HookTick  | **Integer** | Game tick at which the hook state last changed. |
-| Core -> HookX    | **Integer** | Hook collision X position. |
-| Core -> HookY    | **Integer** | Hook collision Y position. |
-| Core -> HookDx   | **Integer** | Hook collision delta X. |
-| Core -> HookDy   | **Integer** | Hook collision delta Y. |
-| Health | **Integer** | Current health of the character (0-10). Only visible to the owning player and spectators of the owning player. |
-| Armor | **Integer** | Current armor of the character (0-10). Only visible to the owning player and spectators of the owning player. |
-| AmmoCount | **Integer** | Ammunition count for the active weapon. For ninja: remaining ninja duration. Visible only to the owning player and spectators of the owning player. |
+| Core -> HookState | **Integer** | Hook state: `-1` = retracted, `0` = idle, `1`-`3` = retracting, `4` = flying, `5` = grabbed. |
+| Core -> HookTick  | **Integer** | Tick counter while the hook is grabbed, used to limit player-hook duration. |
+| Core -> HookX    | **Integer** | Hook endpoint X position in the world. |
+| Core -> HookY    | **Integer** | Hook endpoint Y position in the world. |
+| Core -> HookDx   | **Integer** | Hook direction X component, scaled by 256. |
+| Core -> HookDy   | **Integer** | Hook direction Y component, scaled by 256. |
+| PlayerFlags | **Integer** | Player state flags (bitmask): `1` = playing, `2` = in menu, `4` = chatting, `8` = scoreboard open. |
+| Health | **Integer** | Current health of the character (0-10). Hidden values are sent as `0`. |
+| Armor | **Integer** | Current armor of the character (0-10). Hidden values are sent as `0`. |
+| AmmoCount | **Integer** | Ammunition count for the active weapon (0-10). Unlimited ammunition, including ninja, is sent as `0`; this field does not contain ninja duration. Hidden values are also sent as `0`. |
 | Weapon | **Integer** | Currently active weapon: `0` = hammer, `1` = gun, `2` = shotgun, `3` = grenade, `4` = laser, `5` = ninja. |
 | Emote | **Integer** | Current emote: `0` = normal, `1` = pain, `2` = happy, `3` = surprise, `4` = angry, `5` = blink. |
-| AttackTick | **Integer** | Game tick of the last attack, used by the client for attack prediction. |
-| PlayerFlags | **Integer** | Player state flags (bitmask): `1` = admin, `2` = chatting, `4` = scoreboard open, `8` = ready, `16` = dead, `32` = watching. |
-| TriggeredEvents | **Integer** | Events triggered during this tick (bitmask): `1` = ground jump, `2` = air jump, `4` = hook attached to player, `8` = hook attached to ground, `16` = hook hit non-hookable. Cleared each tick after snap. |
+| AttackTick | **Integer** | Game tick of the last attack, used by the client for attack animations. |
+
+Health, Armor, and AmmoCount are visible to the owning player, permitted spectators following that player, and demo recording. Other clients receive `0` for these fields.
+
+:::info
+`TriggeredEvents` is internal character-core state, **not a field in the protocol character payload**. Do not append it to this item.
+:::
+
+### Jump State & Effects
+
+The Jumped field contains two independent bits:
+
+| Mask | Meaning |
+| ---- | ------- |
+| `1` | A jump was triggered by the current button press. Cleared when the jump button is released. |
+| `2` | The air jump has been used. Cleared on ground contact. |
+
+**Jumped is not a jump counter.** For example, `2` means the air jump has been used and the button has been released; `0` does not necessarily mean the character is grounded.
+
+The client creates the double-jump particles and sound when `Jumped & 2` changes from `0` to `2`. For the local character, this uses the predicted core when prediction is enabled. Other characters use the snapshot core state. There is no separate air-jump event item to send.
+
+### Ninja & Prediction
+
+The client predicts normal character-core physics, **not the ninja dash itself**. The server moves the character for each dash step and then resets the dash velocity to `(0, 0)`, so the client does not extrapolate the dash speed as ordinary movement.
+
+Dash positions arrive through character snapshots. When the dash ends, the server should restore the pre-dash speed along the dash direction, and normal core prediction continues from the velocity in subsequent snapshots.
 
 ## 10 - NETOBJTYPE_PLAYERINFO
 
