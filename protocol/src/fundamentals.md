@@ -26,13 +26,13 @@ Control messages and default packets use a sequence number on the packet header 
 
 The ACK number defines how many [vital chunks](#default-packets) were successfully received. As a server, you will have an ACK number to track how many vital chunks you received from the client, and the client will have an ACK number to track how many vital chunks it received from you (the server).
 
-**ACK and vital chunk sequence numbers range from `0` to `1023`. After `1023`, the next sequence number is `0`.** As this number resets, you must implement a method that checks whether a certain value compared to the ACK is currently in the backroom.
+**ACK and vital chunk sequence numbers range from `0` to `1023`. After `1023`, the next sequence number is `0`.** This return to `0` is called **sequence number rollover**. Because of this, a lower number is not always older than a higher one. Your implementation must check whether a sequence number compared to the ACK is in the backroom.
 
 :::info
 Backroom is the range of sequence numbers already acknowledged, accounting for rollover. For example, with ACK `1`, sequence `1023` is older even though its numerical value is greater.
 :::
 
-The number of unacknowledged vital chunks must also be bounded so that old and new sequence numbers remain distinguishable. You can learn more at the [Resend Buffer](./packets/chunks-concept.md#resend-buffer) section.
+Your implementation must also limit how many vital chunks can wait for an ACK. Otherwise, a new chunk could be mistaken for one that has already been acknowledged. You can learn more at the [Resend Buffer](./packets/chunks-concept.md#resend-buffer) section.
 
 <!-- ## Security Token
 

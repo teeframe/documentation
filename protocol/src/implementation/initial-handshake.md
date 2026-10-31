@@ -1,6 +1,6 @@
 # Initial Handshake
 
-This page describes how to establish the connection and prepare the client to receive the game context.
+This page describes how to establish the connection and load the map (prepare the client to receive the game context).
 
 ## Establishing the Connection
 
@@ -11,7 +11,7 @@ This page describes how to establish the connection and prepare the client to re
 
 ## Loading the Map
 
-The client loads a local copy matching the announced map and CRC. If no matching copy is available, it requests the file through [NETMSG_REQUEST_MAP_DATA](./../chunks/system-messages.md#_19-netmsg-request-map-data), and the server responds with [NETMSG_MAP_DATA](./../chunks/system-messages.md#_3-netmsg-map-data).
+The client first looks for a local copy matching the announced map name and **CRC**, a value calculated from the file's contents to check that it is the expected map. If no matching copy is available, it requests the file through [NETMSG_REQUEST_MAP_DATA](./../chunks/system-messages.md#_19-netmsg-request-map-data), and the server responds with [NETMSG_MAP_DATA](./../chunks/system-messages.md#_3-netmsg-map-data).
 
 Once the map has been loaded, the client sends [NETMSG_READY](./../chunks/system-messages.md#_14-netmsg-ready). The server replies with [NETMSG_CON_READY](./../chunks/system-messages.md#_4-netmsg-con-ready), telling the client to send its start information.
 

@@ -184,7 +184,7 @@ Structure:
 
 ## 14 - NETMSG_READY
 
-Sent by the client after it has loaded the map. The server responds with NETMSG_CON_READY to request the player's start information. **This message does not mean that player initialization is complete.**
+Sent by the client after it has loaded the map. The server responds with NETMSG_CON_READY to request the player's start information. **The client still needs to send CL_STARTINFO before it can enter the game.**
 
 - **Vital** : ✅
 - **Instant Sending** : ✅

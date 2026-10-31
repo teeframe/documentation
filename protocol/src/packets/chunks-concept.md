@@ -43,23 +43,25 @@ Some times the internet connection can fail, and some [vital chunks](#vital-non-
 The source will need to re-send the vital chunks that the peer has not acknowledged. Keep their original sequence numbers and add the [RESEND chunk flag](./../chunks/chunk-structure.md#chunk-flags). Compare sequence numbers accounting for [rollover](./../fundamentals.md#sequence-number), not just their numerical values.
 
 :::info
-The packet RESEND flag requests chunks from the peer. The chunk RESEND flag marks a re-sent chunk. **A retransmission response does not need the packet RESEND flag**, unless it also requests chunks from the peer.
+The packet RESEND flag **asks the peer to re-send its chunks**. The chunk RESEND flag **marks a chunk that is being sent again**. Do not set the packet RESEND flag just because the packet contains re-sent chunks; only set it if you are also asking the peer to re-send its own chunks.
 :::
 
 **For this to be done smoothly, you, as the client or server, must store all the vital chunks that you have sent until they are acknowledged.** Remove the stored chunks according to the latest peer ACK and their sequence numbers. Non-vital chunks do not need to be stored for retransmission.
 
-Re-sending a chunk does not allocate another sequence number or another stored copy. The re-sent chunks must still follow the [packet size and chunk count limits](#chunks-queueing), splitting them across packets when needed.
+Re-sending a chunk must not use a new sequence number or increase the number of stored chunks. The re-sent chunks must still follow the [packet size and chunk count limits](#chunks-queueing), splitting them across packets when needed.
 
 ### Resend Buffer
 
-The stored chunks form the **resend buffer**. Bound this buffer for each connection, including vital chunks still queued for sending. A peer that continues sending packets without advancing its ACK must not allow the buffer to grow indefinitely.
+The stored chunks form the **resend buffer**, which keeps vital chunks available to be sent again until the peer acknowledges them. Set a size limit for each connection and count vital chunks still queued for sending toward that limit too. **Receiving packets from the peer does not mean that it has received your chunks.** Its ACK must confirm that they arrived before you remove them.
 
-*The original 0.6 server* uses a **32 KiB** resend buffer and disconnects the peer if another vital chunk cannot fit. This size is a server policy, **not a limit imposed by the protocol.**
+*The original 0.6 server* uses a **32 KiB (32,768 bytes)** resend buffer and disconnects the peer if another vital chunk cannot fit. This size is a server policy, **not a limit imposed by the protocol.**
 
-*TeeFrame* also limits pending vital chunks to **511**, including queued chunks. This keeps them below half the 1024-value sequence space used by its backroom comparison. Without this limit, an unchanged ACK could cause newer chunks to be mistaken for old ones and removed before being received.
+This capacity includes the chunk data, its sequence number and send times, and the information used to manage the buffer. The number of chunks that fit therefore depends on their sizes.
+
+**The original server removes acknowledged chunks in sending order.** It checks the oldest stored chunk against the received ACK using the [backroom comparison](./../fundamentals.md#sequence-number). If that chunk has been acknowledged, it removes it and checks the next one. It stops at the first chunk that has not been acknowledged.
 
 :::info
-You can use a different buffer size or another way to store unacknowledged chunks. Choose a limit that keeps ACKs unambiguous across sequence rollover. Do not discard unacknowledged vital chunks while continuing the connection as if they had been delivered.
+You can use a different buffer size or another way to store chunks waiting for an ACK. **Do not remove chunks just because the buffer is full; they still need to be delivered or the connection closed.**
 :::
 
 ## Input & Input Timing Chunks

@@ -54,10 +54,6 @@ You can observe that `01000000` is -1 and not -0, as negative zero does not exis
 You can find a more technical explanation in the [ChillerDragon Teeworlds Protocol](https://chillerdragon.github.io/teeworlds-protocol/shared/int_packing.html).
 :::
 
-:::info
-[Connectionless server information](./packets/connectionless-packets.md#encoding) uses null-terminated decimal strings for numbers instead of this integer packing. Its request token fields use raw bytes, including a big-endian 16-bit extra token.
-:::
-
 ## String Packing
 
 When strings are sent via the network, you don't need to worry about bits like numbers, only the bytes. They are sent as plain C strings. They do not contain a length and to identify their end, they must be null-terminated.

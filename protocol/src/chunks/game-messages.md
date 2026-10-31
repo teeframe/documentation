@@ -356,7 +356,7 @@ Structure:
 
 ## 20 - NETMSGTYPE_CL_STARTINFO
 
-This message sends the player's initial information to the server after NETMSG_CON_READY. The server processes it once per map handshake, then sends NETMSGTYPE_SV_READYTOENTER. You can find the complete sequence on the [Sending Game Context](./../implementation/sending-game-context.md) page.
+This message sends the player's initial information to the server after NETMSG_CON_READY. The server processes it once before sending NETMSGTYPE_SV_READYTOENTER. The client must send its information again after a map change. You can find the complete sequence on the [Sending Game Context](./../implementation/sending-game-context.md) page.
 
 - **Vital** : ✅
 - **Instant Sending** : ✅
