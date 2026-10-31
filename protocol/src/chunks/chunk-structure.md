@@ -42,6 +42,16 @@ chunkByte[2]    // message id
 chunkByte[3...] // payload
 ```
 
+## Chunk Size
+
+The chunk size uses 10 bits and has a maximum value of **1023 bytes**. **This size includes the message ID and the payload, but excludes the chunk header.** The message ID occupies one byte, leaving up to **1022 bytes** for the payload.
+
+With its header, a vital chunk can occupy up to 1026 bytes, and a non-vital chunk up to 1025 bytes. The packet header is not included in these totals.
+
+:::warning
+The chunk size limit applies even when the chunk is sent alone or the packet is compressed. Both the chunk size limit and the [packet size limit](./../fundamentals.md#size-limits) must be respected.
+:::
+
 ## Decoding/Encoding Chunk Header
 
 One more time, there is a situation where the header information is "mixed" into multiple bytes, now with the chunk header with 2-3 bytes.

@@ -101,6 +101,7 @@ Structure:
 | TimeLimit     | **Integer** | Time limit for the current match. |
 | RoundNum      | **Integer** | Total number of rounds in the match. |
 | RoundCurrent  | **Integer** | Current round number (`1` based). |
+
 ## 9 - NETOBJTYPE_CHARACTER
 
 This item represents a character (tee) in the game world, including its core physics and state. **The payload contains 22 integers: 15 core fields followed by 7 character fields**, in the order below.
@@ -132,7 +133,11 @@ Structure:
 | Emote | **Integer** | Current emote: `0` = normal, `1` = pain, `2` = happy, `3` = surprise, `4` = angry, `5` = blink. |
 | AttackTick | **Integer** | Game tick of the last attack, used by the client for attack animations. |
 
-Health, Armor, and AmmoCount are visible to the owning player, permitted spectators following that player, and demo recording. Other clients receive `0` for these fields.
+By default, *the original 0.6 server* sends Health, Armor, and AmmoCount to the owning player, permitted spectators following that player, and demo recording. Other clients receive `0` for these fields.
+
+:::info
+This visibility rule is a server policy, **not a restriction imposed by the protocol**. Depending on the mod, you may want to expose these values to teammates or all players. Any client receiving them can read them, even if its interface does not display them.
+:::
 
 :::info
 `TriggeredEvents` is internal character-core state, **not a field in the protocol character payload**. Do not append it to this item.

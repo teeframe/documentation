@@ -69,6 +69,8 @@ The minimum and maximum tick number supported is 0 and 0x6FFFFFFF (1879048191). 
 
 The protocol has some size limits. The maximum size of any kind of packet is 1400 bytes. **This size includes the packet header and the packet payload.**
 
+Each chunk also has a size limit of **1023 bytes**, including its message ID and payload, but excluding its chunk header. You can learn more at the [Chunk Size](./chunks/chunk-structure.md#chunk-size) section.
+
 ## Combining Flags
 
 Since flags are not mutually exclusive states, you can combine flags using bitwise operations. For example, to combine the `FLAG_TYPE_CONTROL` and `FLAG_COMPRESSION` flags, you can implement the following pseudo-code:
